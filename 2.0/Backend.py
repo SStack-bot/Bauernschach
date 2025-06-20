@@ -1,6 +1,8 @@
 import random
 import pickle
 import os
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 
 BOARD_SIZE = 3
 
@@ -37,7 +39,10 @@ class Game:
             self.winner = 'w'
         elif not any('w' in row for row in self.board):
             self.winner = 'b'
-        self.turn = 'b' if self.turn == 'w' else 'w'
+        else:
+            self.turn = 'b' if self.turn == 'w' else 'w'
+            if not self.get_valid_moves(self.turn):
+                self.winner = "draw"
 
     def is_game_over(self):
         return self.winner is not None or not self.get_valid_moves(self.turn)
@@ -45,6 +50,7 @@ class Game:
     def get_state(self):
         return tuple(tuple(row) for row in self.board), self.turn
 
+# KI-Klassen und Training wie gehabt (optional, für PvE/Training)
 class QLearningAI:
     def __init__(self, player, alpha=0.1, gamma=0.9, epsilon=0.05, qfile="qtable.pkl"):
         self.player = player
@@ -121,7 +127,52 @@ def train_ai_selfplay(episodes=5000, progress_callback=None):
     ai_white.save_qtable()
 
 def reset_ai():
-    """Löscht die Q-Table-Dateien der KI."""
     for fname in ["qtable.pkl", "qtable_white.pkl"]:
         if os.path.exists(fname):
             os.remove(fname)
+
+# --- Flask Backend für Netzwerk-PvP ---
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+
+app = Flask(__name__)
+CORS(app)
+games = {}
+
+@app.route("/new_game", methods=["POST"])
+def new_game():
+    session_id = request.json.get("session_id")
+    games[session_id] = Game()
+    return jsonify({"status": "ok"})
+
+@app.route("/get_state", methods=["GET"])
+def get_state():
+    session_id = request.args.get("session_id")
+    game = games.get(session_id)
+    if not game:
+        return jsonify({"error": "No such game"}), 404
+    return jsonify({
+        "board": game.board,
+        "turn": game.turn,
+        "winner": game.winner
+    })
+
+@app.route("/move", methods=["POST"])
+def move():
+    session_id = request.json.get("session_id")
+    move = request.json.get("move")  # [[r1, c1], [r2, c2]]
+    game = games.get(session_id)
+    if not game:
+        return jsonify({"error": "No such game"}), 404
+    move_tuple = (tuple(move[0]), tuple(move[1]))
+    if move_tuple not in game.get_valid_moves(game.turn):
+        return jsonify({"error": "Invalid move"}), 400
+    game.make_move(move_tuple)
+    return jsonify({
+        "board": game.board,
+        "turn": game.turn,
+        "winner": game.winner
+    })
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
