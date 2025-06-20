@@ -15,6 +15,7 @@ MENU_BG = (60, 60, 80)
 BUTTON_COLOR = (180, 180, 220)
 BUTTON_HOVER = (120, 180, 255)
 BUTTON_TEXT = (30, 30, 30)
+SERVER = "http://10.0.3.27:5000"  # <--- Hier deine Server-IP eintragen!
 
 def draw_board(screen, game, selected=None, valid_moves=[]):
     offset_x = (WIDTH - BOARD_SIZE * SQUARE_SIZE) // 2
@@ -119,8 +120,8 @@ def color_choice_box(screen, font):
 
 def pvp_network_game(screen):
     font = pygame.font.SysFont(None, 36)
-    # IP-Adresse und Session-ID abfragen
-    server = text_input_box(screen, "Server-IP (z.B. http://192.168.178.42:5000):", HEIGHT//2 - 120, font)
+    # IP-Adresse wird nicht mehr abgefragt, sondern SERVER verwendet!
+    server = SERVER
     session_id = text_input_box(screen, "Session-ID für das Spiel eingeben:", HEIGHT//2 - 60, font)
     player = color_choice_box(screen, font)
     try:
@@ -171,7 +172,6 @@ def pvp_network_game(screen):
                     if selected is None:
                         if board[r][c] == player:
                             selected = (r, c)
-                            # valid_moves anzeigen
                             dummy_game = Game()
                             dummy_game.board = [row[:] for row in board]
                             valid_moves = [m for m in dummy_game.get_valid_moves(player) if m[0] == selected]
@@ -255,7 +255,7 @@ def show_training_progress(screen, episodes_done):
     screen.blit(text, (WIDTH//2 - text.get_width()//2, HEIGHT//2 - text.get_height()//2))
     pygame.display.flip()
 
-def train_ai_selfplay_gui(screen, episodes=5000):
+def train_ai_selfplay_gui(screen, episodes=50000):
     font = pygame.font.SysFont(None, 36)
     print(f"Starte Selbstlernmodus für {episodes} Spiele ...")
     def progress_callback(episodes_done):
@@ -283,7 +283,7 @@ if __name__ == "__main__":
             pygame.display.flip()
             pygame.time.wait(1500)
         elif mode == 3:
-            train_ai_selfplay_gui(screen, 5000)
+            train_ai_selfplay_gui(screen, 50000)
         elif mode == 2:
             pvp_network_game(screen)
         else:
